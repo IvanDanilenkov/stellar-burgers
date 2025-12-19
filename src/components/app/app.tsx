@@ -1,3 +1,6 @@
+import { useEffect } from 'react';
+import { useDispatch } from '../../services/store';
+import { fetchIngredients } from '../../services/slices/ingredientsSlice';
 import {
   Routes,
   Route,
@@ -26,12 +29,18 @@ type LocationState = { background?: Location };
 const App = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const state = location.state as LocationState | null;
   const background = state?.background;
 
   const handleModalClose = () => {
     navigate(-1);
   };
+
+  useEffect(() => {
+    dispatch(fetchIngredients());
+  }, [dispatch]);
 
   return (
     <div className={styles.app}>
