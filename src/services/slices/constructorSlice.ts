@@ -31,6 +31,32 @@ const constructorSlice = createSlice({
       });
     },
 
+    moveIngredient: (
+      state,
+      action: PayloadAction<{ fromIndex: number; toIndex: number }>
+    ) => {
+      const { fromIndex, toIndex } = action.payload;
+
+      // 1) Защита от выхода за границы массива
+      if (
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= state.ingredients.length ||
+        toIndex >= state.ingredients.length
+      ) {
+        return;
+      }
+
+      // 2) Достаём элемент из позиции fromIndex
+      const movedItem = state.ingredients[fromIndex];
+
+      // 3) Удаляем его из массива
+      state.ingredients.splice(fromIndex, 1);
+
+      // 4) Вставляем в новую позицию
+      state.ingredients.splice(toIndex, 0, movedItem);
+    },
+
     removeIngredient: (state, action: PayloadAction<string>) => {
       state.ingredients = state.ingredients.filter(
         (item) => item.id !== action.payload
@@ -44,7 +70,11 @@ const constructorSlice = createSlice({
   }
 });
 
-export const { addIngredient, removeIngredient, clearConstructor } =
-  constructorSlice.actions;
+export const {
+  addIngredient,
+  removeIngredient,
+  clearConstructor,
+  moveIngredient
+} = constructorSlice.actions;
 
 export default constructorSlice.reducer;
