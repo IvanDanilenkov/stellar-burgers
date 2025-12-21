@@ -1,44 +1,40 @@
-import { FC, useMemo } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 
 import { Preloader } from '../ui/preloader';
 import { OrderInfoUI } from '../ui/order-info';
 
-import { TIngredient } from '@utils-types';
+import { TIngredient, TOrder } from '@utils-types';
 import { useSelector } from '../../services/store';
+import { getOrderByNumberApi } from '../../utils/burger-api';
 
 export const OrderInfo: FC = () => {
-  // 1) number из URL всегда строка
   const { number } = useParams<{ number: string }>();
-
-  // 2) определяем, из какой страницы пришли
   const { pathname } = useLocation();
+
   const isFeedPage = pathname.startsWith('/feed');
   const isProfileOrdersPage = pathname.startsWith('/profile/orders');
 
-  // 3) ингредиенты (общий справочник)
   const ingredients = useSelector(
     (state) => state.ingredients.items
   ) as TIngredient[];
 
-  // 4) источники заказов
   const feedOrders = useSelector((state) => state.feed.orders);
   const profileOrders = useSelector((state) => state.profileOrders.orders);
 
-  // 5) находим заказ по номеру в нужной ветке
-  const orderData = useMemo(() => {
+  // локально держим заказ, если его нет в сторе
+  const [fetchedOrder, setFetchedOrder] = useState<TOrder | null>(null);
+
+  // 1) Пробуем найти заказ в уже загруженных списках
+  const orderFromLists = useMemo(() => {
     const orderNumber = Number(number);
     if (!orderNumber) return null;
 
-    if (isFeedPage) {
+    if (isFeedPage)
       return feedOrders.find((o) => o.number === orderNumber) ?? null;
-    }
-
-    if (isProfileOrdersPage) {
+    if (isProfileOrdersPage)
       return profileOrders.find((o) => o.number === orderNumber) ?? null;
-    }
 
-    // запасной вариант: если маршрут вдруг другой, пробуем найти хоть где-то
     return (
       feedOrders.find((o) => o.number === orderNumber) ??
       profileOrders.find((o) => o.number === orderNumber) ??
@@ -46,7 +42,37 @@ export const OrderInfo: FC = () => {
     );
   }, [number, isFeedPage, isProfileOrdersPage, feedOrders, profileOrders]);
 
-  // 6) готовим данные для UI
+  // 2) Если не нашли в store — грузим по номеру через API
+  useEffect(() => {
+    const orderNumber = Number(number);
+    if (!orderNumber) return;
+
+    // если нашли в store — локальная подгрузка не нужна
+    if (orderFromLists) {
+      setFetchedOrder(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    getOrderByNumberApi(orderNumber)
+      .then((res) => {
+        const order = res.orders?.[0] ?? null;
+        if (!cancelled) setFetchedOrder(order);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedOrder(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [number, orderFromLists]);
+
+  // 3) Источник данных: store -> иначе fetchedOrder
+  const orderData = orderFromLists ?? fetchedOrder;
+
+  // 4) Готовим данные для UI
   const orderInfo = useMemo(() => {
     if (!orderData || !ingredients.length) return null;
 
@@ -60,9 +86,7 @@ export const OrderInfo: FC = () => {
       (acc: TIngredientsWithCount, itemId) => {
         if (!acc[itemId]) {
           const ingredient = ingredients.find((ing) => ing._id === itemId);
-          if (ingredient) {
-            acc[itemId] = { ...ingredient, count: 1 };
-          }
+          if (ingredient) acc[itemId] = { ...ingredient, count: 1 };
         } else {
           acc[itemId].count++;
         }
