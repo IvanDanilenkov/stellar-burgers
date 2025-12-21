@@ -1,6 +1,4 @@
 import { useEffect } from 'react';
-import { useDispatch } from '../../services/store';
-import { fetchIngredients } from '../../services/slices/ingredientsSlice';
 import {
   Routes,
   Route,
@@ -8,6 +6,18 @@ import {
   type Location,
   useNavigate
 } from 'react-router-dom';
+
+import '../../index.css';
+import styles from './app.module.css';
+
+import {
+  AppHeader,
+  Modal,
+  OrderInfo,
+  IngredientDetails,
+  ProtectedRoute
+} from '@components';
+
 import {
   ConstructorPage,
   Feed,
@@ -20,9 +30,9 @@ import {
   NotFound404
 } from '@pages';
 
-import '../../index.css';
-import styles from './app.module.css';
-import { AppHeader, Modal, OrderInfo, IngredientDetails } from '@components';
+import { useDispatch } from '../../services/store';
+import { fetchIngredients } from '../../services/slices/ingredientsSlice';
+import { fetchUser } from '../../services/slices/userSlice';
 
 type LocationState = { background?: Location };
 
@@ -38,31 +48,62 @@ const App = () => {
     navigate(-1);
   };
 
+  // 1) Загружаем ингредиенты
+  // 2) Проверяем авторизацию (если токены есть — user заполнится)
   useEffect(() => {
     dispatch(fetchIngredients());
+    dispatch(fetchUser());
   }, [dispatch]);
 
   return (
     <div className={styles.app}>
       <AppHeader />
+
+      {/* Основные страницы (если есть background — показываем "фон" под модалкой) */}
       <Routes location={background || location}>
         <Route path='/' element={<ConstructorPage />} />
         <Route path='/feed' element={<Feed />} />
 
-        <Route path='/register' element={<Register />} />
-        <Route path='/login' element={<Login />} />
-        <Route path='/forgot-password' element={<ForgotPassword />} />
-        <Route path='/reset-password' element={<ResetPassword />} />
+        {/* Роуты только для НЕавторизованных */}
+        <Route
+          path='/login'
+          element={<ProtectedRoute onlyUnAuth element={<Login />} />}
+        />
+        <Route
+          path='/register'
+          element={<ProtectedRoute onlyUnAuth element={<Register />} />}
+        />
+        <Route
+          path='/forgot-password'
+          element={<ProtectedRoute onlyUnAuth element={<ForgotPassword />} />}
+        />
+        <Route
+          path='/reset-password'
+          element={<ProtectedRoute onlyUnAuth element={<ResetPassword />} />}
+        />
 
-        <Route path='/profile' element={<Profile />} />
-        <Route path='/profile-orders' element={<ProfileOrders />} />
+        {/* Защищённые роуты */}
+        <Route
+          path='/profile'
+          element={<ProtectedRoute element={<Profile />} />}
+        />
+        <Route
+          path='/profile/orders'
+          element={<ProtectedRoute element={<ProfileOrders />} />}
+        />
 
+        {/* Страницы при прямом переходе (без background) */}
         <Route path='/ingredients/:id' element={<IngredientDetails />} />
         <Route path='/feed/:number' element={<OrderInfo />} />
-        <Route path='/profile/orders/:number' element={<OrderInfo />} />
+        <Route
+          path='/profile/orders/:number'
+          element={<ProtectedRoute element={<OrderInfo />} />}
+        />
 
         <Route path='*' element={<NotFound404 />} />
       </Routes>
+
+      {/* Модалки: показываем только если переход был "изнутри" приложения (есть background) */}
       {background && (
         <Routes>
           <Route
@@ -84,9 +125,13 @@ const App = () => {
           <Route
             path='/profile/orders/:number'
             element={
-              <Modal title='Детали заказа' onClose={handleModalClose}>
-                <OrderInfo />
-              </Modal>
+              <ProtectedRoute
+                element={
+                  <Modal title='Детали заказа' onClose={handleModalClose}>
+                    <OrderInfo />
+                  </Modal>
+                }
+              />
             }
           />
         </Routes>

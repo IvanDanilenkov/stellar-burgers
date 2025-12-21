@@ -1,4 +1,5 @@
 import { FC, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useSelector, useDispatch } from '../../services/store';
 import { BurgerConstructorUI } from '@ui';
@@ -16,6 +17,9 @@ export const BurgerConstructor: FC = () => {
   const orderModalData = useSelector((state) => state.order.orderModalData);
 
   const dispatch = useDispatch();
+  const user = useSelector((state) => state.user.user);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const constructorItems = {
     bun,
@@ -25,6 +29,10 @@ export const BurgerConstructor: FC = () => {
   const onOrderClick = () => {
     if (!bun || orderRequest) return;
 
+    if (!user) {
+      navigate('/login', { state: { from: location }, replace: true });
+      return;
+    }
     const ingredientIds = [
       bun._id,
       ...ingredients.map((item) => item._id),
@@ -35,7 +43,8 @@ export const BurgerConstructor: FC = () => {
       .unwrap()
       .then(() => {
         dispatch(clearConstructor());
-      });
+      })
+      .catch(() => {});
   };
 
   const closeOrderModal = () => {
