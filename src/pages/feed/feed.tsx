@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { FC, useState } from 'react';
 
 import { Preloader } from '@ui';
 import { FeedUI } from '@ui-pages';
@@ -7,18 +7,20 @@ import { useSelector } from '../../services/store';
 import { useFeedSocket } from '../../services/hooks/useFeedSocket';
 
 export const Feed: FC = () => {
-  // 1) Подключаемся к публичному WebSocket каналу ленты
-  useFeedSocket('wss://norma.education-services.ru/orders/all');
+  const [reconnectKey, setReconnectKey] = useState(0);
 
-  // 2) Берём заказы из Redux
+  useFeedSocket('wss://norma.education-services.ru/orders/all', reconnectKey);
+
   const orders = useSelector((state) => state.feed.orders);
+  const status = useSelector((state) => state.feed.status);
 
-  // 3) Пока данных нет — показываем прелоадер
-  if (!orders.length) {
+  const handleGetFeeds = () => {
+    setReconnectKey((prev) => prev + 1);
+  };
+
+  if (status !== 'online') {
     return <Preloader />;
   }
-
-  const handleGetFeeds = () => {};
 
   return <FeedUI orders={orders} handleGetFeeds={handleGetFeeds} />;
 };

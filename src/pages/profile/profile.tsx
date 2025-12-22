@@ -45,7 +45,8 @@ export const Profile: FC = () => {
       .then(() => {
         // После успешного сохранения очищаем пароль в форме
         setFormValue((prev) => ({ ...prev, password: '' }));
-      });
+      })
+      .catch(() => {});
   };
 
   const handleCancel = (e: SyntheticEvent) => {

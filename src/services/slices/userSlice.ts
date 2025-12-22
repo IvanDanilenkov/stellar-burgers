@@ -101,7 +101,6 @@ export const logoutUser = createAsyncThunk(
         (e as { message?: string }).message ?? 'Logout error'
       );
     } finally {
-      // ✅ гарантированно чистим токены на клиенте
       localStorage.removeItem('refreshToken');
       deleteCookie('accessToken');
     }
