@@ -1,23 +1,78 @@
-import { FC, useMemo } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
+
 import { Preloader } from '../ui/preloader';
 import { OrderInfoUI } from '../ui/order-info';
-import { TIngredient } from '@utils-types';
+
+import { TIngredient, TOrder } from '@utils-types';
+import { useSelector } from '../../services/store';
+import { getOrderByNumberApi } from '../../utils/burger-api';
 
 export const OrderInfo: FC = () => {
-  /** TODO: взять переменные orderData и ingredients из стора */
-  const orderData = {
-    createdAt: '',
-    ingredients: [],
-    _id: '',
-    status: '',
-    name: '',
-    updatedAt: 'string',
-    number: 0
-  };
+  const { number } = useParams<{ number: string }>();
+  const { pathname } = useLocation();
 
-  const ingredients: TIngredient[] = [];
+  const isFeedPage = pathname.startsWith('/feed');
+  const isProfileOrdersPage = pathname.startsWith('/profile/orders');
 
-  /* Готовим данные для отображения */
+  const ingredients = useSelector(
+    (state) => state.ingredients.items
+  ) as TIngredient[];
+
+  const feedOrders = useSelector((state) => state.feed.orders);
+  const profileOrders = useSelector((state) => state.profileOrders.orders);
+
+  // локально держим заказ, если его нет в сторе
+  const [fetchedOrder, setFetchedOrder] = useState<TOrder | null>(null);
+
+  // 1) Пробуем найти заказ в уже загруженных списках
+  const orderFromLists = useMemo(() => {
+    const orderNumber = Number(number);
+    if (!orderNumber) return null;
+
+    if (isFeedPage)
+      return feedOrders.find((o) => o.number === orderNumber) ?? null;
+    if (isProfileOrdersPage)
+      return profileOrders.find((o) => o.number === orderNumber) ?? null;
+
+    return (
+      feedOrders.find((o) => o.number === orderNumber) ??
+      profileOrders.find((o) => o.number === orderNumber) ??
+      null
+    );
+  }, [number, isFeedPage, isProfileOrdersPage, feedOrders, profileOrders]);
+
+  // 2) Если не нашли в store — грузим по номеру через API
+  useEffect(() => {
+    const orderNumber = Number(number);
+    if (!orderNumber) return;
+
+    // если нашли в store — локальная подгрузка не нужна
+    if (orderFromLists) {
+      setFetchedOrder(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    getOrderByNumberApi(orderNumber)
+      .then((res) => {
+        const order = res.orders?.[0] ?? null;
+        if (!cancelled) setFetchedOrder(order);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedOrder(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [number, orderFromLists]);
+
+  // 3) Источник данных: store -> иначе fetchedOrder
+  const orderData = orderFromLists ?? fetchedOrder;
+
+  // 4) Готовим данные для UI
   const orderInfo = useMemo(() => {
     if (!orderData || !ingredients.length) return null;
 
@@ -28,19 +83,13 @@ export const OrderInfo: FC = () => {
     };
 
     const ingredientsInfo = orderData.ingredients.reduce(
-      (acc: TIngredientsWithCount, item) => {
-        if (!acc[item]) {
-          const ingredient = ingredients.find((ing) => ing._id === item);
-          if (ingredient) {
-            acc[item] = {
-              ...ingredient,
-              count: 1
-            };
-          }
+      (acc: TIngredientsWithCount, itemId) => {
+        if (!acc[itemId]) {
+          const ingredient = ingredients.find((ing) => ing._id === itemId);
+          if (ingredient) acc[itemId] = { ...ingredient, count: 1 };
         } else {
-          acc[item].count++;
+          acc[itemId].count++;
         }
-
         return acc;
       },
       {}
