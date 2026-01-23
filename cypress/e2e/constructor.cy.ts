@@ -85,6 +85,21 @@ describe('Constructor page', () => {
       // Проверяем, что модалка закрылась
       cy.get('[data-testid="modal-overlay"]').should('not.exist');
     });
+    it('закрывает модалку по нажатию клавиши Escape', () => {
+      const ingredientName = 'Соус фирменный Space Sauce';
+
+      // открываем модалку
+      cy.contains(ingredientName).click();
+
+      // убеждаемся, что модалка открыта
+      cy.get('[data-testid="modal-overlay"]').should('exist');
+
+      // нажимаем Escape
+      cy.get('body').type('{esc}');
+
+      // проверяем, что модалка закрылась
+      cy.get('[data-testid="modal-overlay"]').should('not.exist');
+    });
   });
 
   describe('Создание заказа', () => {
