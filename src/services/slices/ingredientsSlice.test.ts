@@ -1,4 +1,20 @@
 import reducer, { fetchIngredients } from './ingredientsSlice';
+import { TIngredient } from '../../utils/types';
+
+const makeIngredient = (overrides: Partial<TIngredient>): TIngredient => ({
+  _id: 'id',
+  name: 'name',
+  type: 'main',
+  proteins: 0,
+  fat: 0,
+  carbohydrates: 0,
+  calories: 0,
+  price: 0,
+  image: '',
+  image_mobile: '',
+  image_large: '',
+  ...overrides
+});
 
 describe('ingredientsSlice async reducer', () => {
   it('pending: isLoading становится true и error сбрасывается', () => {
@@ -10,9 +26,9 @@ describe('ingredientsSlice async reducer', () => {
 
   it('fulfilled: записывает items и выключает isLoading', () => {
     const mockItems = [
-      { _id: '1', name: 'Ингредиент 1', type: 'main', price: 10 },
-      { _id: '2', name: 'Ингредиент 2', type: 'bun', price: 20 }
-    ] as any;
+      makeIngredient({ _id: '1', name: 'Ингредиент 1' }),
+      makeIngredient({ _id: '2', name: 'Ингредиент 2', type: 'bun' })
+    ];
 
     const state = reducer(
       undefined,
@@ -25,14 +41,12 @@ describe('ingredientsSlice async reducer', () => {
   });
 
   it('rejected: записывает error и выключает isLoading', () => {
-    const errorMessage = 'Network error';
-
     const state = reducer(
       undefined,
-      fetchIngredients.rejected(new Error(errorMessage), '', undefined)
+      fetchIngredients.rejected(new Error('Network error'), '', undefined)
     );
 
     expect(state.isLoading).toBe(false);
-    expect(state.error).toBe(errorMessage);
+    expect(state.error).toBe('Network error');
   });
 });

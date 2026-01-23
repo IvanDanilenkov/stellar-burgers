@@ -14,7 +14,6 @@ export const ModalUI: FC<TModalUIProps> = memo(
           <h3 className={`${styles.title} text text_type_main-large`}>
             {title}
           </h3>
-          data-testid='modal-close'
           <button
             className={styles.button}
             type='button'

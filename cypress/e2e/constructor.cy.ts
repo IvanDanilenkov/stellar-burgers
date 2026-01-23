@@ -52,8 +52,10 @@ describe('Constructor page', () => {
           cy.get('button').first().click();
         });
 
-      // Проверяем, что ингредиент появился (пока базовая проверка)
-      cy.contains(name).should('exist');
+      // Проверяем, что ингредиент появился
+      cy.get('[data-testid="burger-constructor"]')
+        .contains(name)
+        .should('exist');
     });
   });
 
